@@ -113,22 +113,7 @@ text       | text
 blob       | bytea
 real       | real
 double     | float8
-float      | float8
-numeric    | numeric
-decimal    | numeric
-bool       | boolean
-date       | text
-time       | text
-
-1. 所有的整数类型转换为bigint，（sqlite底层也是如此实现的）
-2. 所有的浮点类型转换为float8
-3. 所有的文本类型转换为text
-4. 所有的二进制类型转换为bytea
-5. 布尔类型转换为boolean
-6. 定点数类型转换为numeric
-7. 日期和时间类型转换为text，这里主要是考虑格式问题，sqlite对时间日期的格式比较灵活，而Postgres则比较严格，直接的字面转化很容易引起报错，导致迁移失败。
-
-### 4. Schema & Tables
+float      | float8SQLite
 当迁移表的时候，需要处理一些特殊情况。
 - 当schema不存在的时候，会主动创建schema
 - 当迁移表的时候，如果表已经存在，会将表删除，然后再创建表。
@@ -217,4 +202,4 @@ ref-doc:
 sqlite中不存在分区表，目前暂时不支持分区表的迁移。
 
 ### 17. Sqlite3 config
-
+使用SQLite绝对路径迁移数据库
