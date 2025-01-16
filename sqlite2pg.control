@@ -1,0 +1,5 @@
+comment = 'copy sqlite tables to postgres'
+default_version = '0.0.1'
+module_pathname = '$libdir/sqlite2pg'
+relocatable = true
+requires = 'plpython3u'
