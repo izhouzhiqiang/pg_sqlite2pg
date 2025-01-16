@@ -6,10 +6,11 @@ Postgres 开源工具，用于将SQLite数据迁移到Postgres
 
 ## 安装
 ```sh
-
 export PATH=your/path/to/pg_config:$PATH
-make && make install
 
+git clone git@github.com:izhouzhiqiang/pg_sqlite2pg.git
+cd pg_sqlite2pg
+make && make install
 ```
 
 ## 使用指南

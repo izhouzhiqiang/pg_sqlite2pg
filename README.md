@@ -6,10 +6,11 @@ Not need to consider the table, field type and structure. Automatically analyze 
 
 ## Installation
 ```sh
-
 export PATH=your/path/to/pg_config:$PATH
-make && make install
 
+git clone git@github.com:izhouzhiqiang/pg_sqlite2pg.git
+cd pg_sqlite2pg
+make && make install
 ```
 
 ## Getting Started
