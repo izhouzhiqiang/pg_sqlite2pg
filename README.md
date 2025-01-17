@@ -226,3 +226,6 @@ So far, partitioned table migration is not supported.
 
 ### 17. Sqlite3 config
 Use absolute path to the sqlite3 database file.
+
+### 18. Long Table Name
+Postgres supports table names up to 63 characters. If the length of a sqlite table name exceeds this limit, table name truncation will be truncated automatically.
