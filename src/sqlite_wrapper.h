@@ -27,6 +27,11 @@ typedef struct sqlite_query_result {
     sqlite_row *end;           /* current result set */
 } sqlite_query_result;
 
+typedef struct sqlite_tablename {
+    int         n_tables;
+    char        **table_names;
+} sqlite_tablename;
+
 int sqlite_rows_callback(void *result, int argc, char **argv, char **azColName);
 sqlite3 *connect2sqlite(char * sqlite_path);
 sqlite_query_result *init_sqlite_query_result(void);

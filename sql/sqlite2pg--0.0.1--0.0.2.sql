@@ -11,7 +11,12 @@ RETURNS void
 AS 'MODULE_PATHNAME', 'connect_sqlite'
 LANGUAGE C;
 
-CREATE OR REPLACE FUNCTION is_keyword(kw text)
+CREATE OR REPLACE FUNCTION is_legal_colname(kw text)
 RETURNS boolean
-AS 'MODULE_PATHNAME', 'is_keyword'
+AS 'MODULE_PATHNAME', 'is_legal_colname'
+LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION get_sqlite_tables_c(sqlite_path text)
+RETURNS text[]
+AS 'MODULE_PATHNAME', 'get_sqlite_tables_c'
 LANGUAGE C;

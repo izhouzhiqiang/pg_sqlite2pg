@@ -9,6 +9,7 @@ OBJS = \
 	src/sqlite_wrapper.o	\
 	src/sqlite_driver/sqlite3.o
 
+PG_CFLAGS = -std=c99 -ggdb -O2
 # REGRESS = \
 
 PG_CONFIG = pg_config
