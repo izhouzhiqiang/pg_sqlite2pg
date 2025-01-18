@@ -27,10 +27,10 @@ typedef struct sqlite_query_result {
     sqlite_row *end;           /* current result set */
 } sqlite_query_result;
 
-typedef struct sqlite_tablename {
+typedef struct sqlite_stringarr {
     int         n_tables;
     char        **table_names;
-} sqlite_tablename;
+} sqlite_stringarr;
 
 int sqlite_rows_callback(void *result, int argc, char **argv, char **azColName);
 sqlite3 *connect2sqlite(char * sqlite_path);
