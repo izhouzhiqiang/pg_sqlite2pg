@@ -25,3 +25,13 @@ CREATE OR REPLACE FUNCTION get_sqlite_columns_c(sqlite_path text, table_name tex
 RETURNS text[]
 AS 'MODULE_PATHNAME', 'get_sqlite_columns'
 LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION sqlite2pg_typemap_c(typname text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'sqlite2pg_typemap'
+LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION sqlite2pg_colnamemap_c(colname text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'sqlite2pg_colnamemap'
+LANGUAGE C;

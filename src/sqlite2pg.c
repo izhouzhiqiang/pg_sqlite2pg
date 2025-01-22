@@ -34,9 +34,10 @@ PG_FUNCTION_INFO_V1(connect_sqlite);
 PG_FUNCTION_INFO_V1(is_legal_colname);
 PG_FUNCTION_INFO_V1(get_sqlite_tables);
 PG_FUNCTION_INFO_V1(get_sqlite_columns);
+PG_FUNCTION_INFO_V1(sqlite2pg_typemap);
+PG_FUNCTION_INFO_V1(sqlite2pg_colnamemap);
 // PG_FUNCTION_INFO_V1(sqlite_rowid_exists);
 // PG_FUNCTION_INFO_V1(generate_create_table);
-// PG_FUNCTION_INFO_V1(sqlite2pg_typemap);
 // PG_FUNCTION_INFO_V1(mirgate_single_table);
 // PG_FUNCTION_INFO_V1(mirgate_sqlite2pg);
 
@@ -55,7 +56,12 @@ PG_FUNCTION_INFO_V1(get_sqlite_columns);
  */
 static bool is_reserved_keyword(const char *word);
 static sqlite_stringarr *get_sqlite_tablenames(sqlite3 *db);
-static sqlite_stringarr *get_sqlite_columnnames(sqlite3 *db, const char* tablename);
+static sqlite_stringarr *get_sqlite_columnnames(sqlite3 *db, const char* tablename, bool is_transform);
+static char *sqlite_str2lower_inplace(char *str);
+static char *type_transform(char *type);
+static char *colname_transform(char *colname);
+// static char *generate_sql(char *, sqlite_stringarr *);
+
 
 Datum
 is_legal_colname(PG_FUNCTION_ARGS)
@@ -90,7 +96,7 @@ get_sqlite_columns(PG_FUNCTION_ARGS)
     char *sqlite_path = text_to_cstring(PG_GETARG_TEXT_PP(0));
     char *tablename = text_to_cstring(PG_GETARG_TEXT_PP(1));
     sqlite3 *db = connect2sqlite(sqlite_path);
-    sqlite_stringarr *coltype_define = get_sqlite_columnnames(db, tablename);
+    sqlite_stringarr *coltype_define = get_sqlite_columnnames(db, tablename, false); // not transform when showing to user
     Datum *texts = palloc0(sizeof(Datum) * coltype_define->n_tables);
     ArrayType *result;
 
@@ -146,7 +152,21 @@ connect_sqlite(PG_FUNCTION_ARGS)
     return 0;
 }
 
-bool
+Datum
+sqlite2pg_typemap(PG_FUNCTION_ARGS)
+{
+    char *type = text_to_cstring(PG_GETARG_TEXT_PP(0));
+    return CStringGetTextDatum(type_transform(type));
+}
+
+Datum
+sqlite2pg_colnamemap(PG_FUNCTION_ARGS)
+{
+    char *colname = text_to_cstring(PG_GETARG_TEXT_PP(0));
+    return CStringGetTextDatum(colname_transform(colname));
+}
+
+static bool
 is_reserved_keyword(const char *word)
 {
     // char *name = text_to_cstring(PG_GETARG_TEXT_PP(0));
@@ -212,7 +232,7 @@ get_sqlite_tablenames(sqlite3 *db)
 }
 
 static sqlite_stringarr *
-get_sqlite_columnnames(sqlite3 *db, const char* tablename)
+get_sqlite_columnnames(sqlite3 *db, const char* tablename, bool is_transformed)
 {
     char sql[1024];
     sqlite_query_result *result = init_sqlite_query_result();
@@ -260,16 +280,121 @@ get_sqlite_columnnames(sqlite3 *db, const char* tablename)
         Assert(curr_row->values[1] != NULL);
         Assert(curr_row->values[2] != NULL);
 
-        col_name_type[i*2] = pstrdup(curr_row->values[1]);
-        col_name_type[i*2+1] = pstrdup(curr_row->values[2]);
-        elog(NOTICE, "tablename: %s ,type: %s", curr_row->values[1], curr_row->values[2]);
+        if(is_transformed)
+        {
+            // change colname & typename to
+            // lower case & Postgres datatype & Postgres legal col name
+            col_name_type[i*2] = colname_transform(curr_row->values[1]);
+            col_name_type[i*2+1] = type_transform(curr_row->values[2]);
+        }
+        else
+        {
+            // change colname & typename to lower case
+            col_name_type[i*2] = sqlite_str2lower_inplace(pstrdup(curr_row->values[1]));
+            col_name_type[i*2+1] = sqlite_str2lower_inplace(pstrdup(curr_row->values[2]));
+        }
+
+        // elog(NOTICE, "tablename: %s ,type: %s", col_name_type[i*2], col_name_type[i*2+1]);
 
         curr_row = curr_row->next;
     }
 
     ret->n_tables = result->n_rows * 2;
     ret->table_names = col_name_type;
+    free_sqlite_query_result(result);
 
     return ret;
 }
+
+static char *
+sqlite_str2lower_inplace(char *str)
+{
+    char *head = str;
+    while(*str)
+    {
+        *str = tolower((unsigned char)*str);
+        ++str;
+    }
+    return head;
+}
+
+static char *
+type_transform(char *type)
+{
+    char *target_type = NULL;
+    type = sqlite_str2lower_inplace(type);
+    if(strstr(type, "int"))
+        target_type = "bigint";
+    else if(strstr(type, "char"))
+        target_type = "text";
+    else if(strstr(type, "clob"))
+        target_type = "text";
+    else if(strstr(type, "text"))
+        target_type = "text";
+    else if(strstr(type, "blob"))
+        target_type = "bytea";
+    else if (strstr(type, "real"))
+        target_type = "float8";
+    else if (strstr(type, "double"))
+        target_type = "float8";
+    else if (strstr(type, "float"))
+        target_type = "float8";
+    else if (strstr(type, "numeric"))
+        target_type = "numeric";
+    else if (strstr(type, "decimal"))
+        target_type = "numeric";
+    else if (strstr(type, "boolean"))
+        target_type = "boolean";
+    else if(strstr(type, "date"))
+        target_type = "text";
+    else if(strstr(type, "time"))
+        target_type = "text";
+    else
+        target_type = "text";
+
+    return pstrdup(target_type);
+}
+
+static char *
+colname_transform(char *colname)
+{
+    if(strlen(colname) > 1 && colname[0] == '"')
+        pstrdup(colname);
+
+    if(is_reserved_keyword(colname))
+    {
+        char *new_colname = palloc(strlen(colname) + 2 + 1);
+        sprintf(new_colname, "\"%s\"", colname);
+        new_colname[strlen(new_colname)] = '\0';
+        return new_colname;
+    }
+
+    return pstrdup(sqlite_str2lower_inplace(colname));
+}
+
+// static char *
+// generate_sql(char *tablename, sqlite_stringarr *colname_type)
+// {
+//     char *sql = NULL;
+//     int i, len = 0;
+//     for(i = 0; i < colname_type->n_tables; ++i)
+//     {
+//         len += strlen(colname_type->table_names[i]) + 1;
+//     }
+
+//     sql = palloc(len);
+//     strcpy(sql, "CREATE TABLE ");
+//     strcat(sql, colname_type->table_names[0]);
+//     strcat(sql, " (");
+
+//     for(i = 0; i < colname_type->n_tables; ++i)
+//     {
+//         strcat(sql, "\"");
+//         strcat(sql, colname_type->table_names[i]);
+//         strcat(sql, "\" ");
+//         strcat(sql, colname_type->table_names[++i]);
+//         if(i != colname_type->n_tables - 1)
+//             strcat(sql, ", ");
+//     }
+// }
 
